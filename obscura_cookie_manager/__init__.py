@@ -1,0 +1,61 @@
+"""
+ObscuraCookieManager - Shared cookie refresh mechanism for CLI tools.
+
+Provides:
+- Automatic cookie validation and refresh
+- Browser cookie extraction with fallback strategies
+- Multi-source cookie storage (file, env var, browser profile)
+- Platform-specific extractors for Reddit, Twitter, Instagram
+"""
+
+from __future__ import annotations
+
+from .core import ObscuraCookieManager, CookieSource, CookieValidationResult
+from .storage import (
+    CookieStorage,
+    FileCookieStorage,
+    EnvVarCookieStorage,
+    BrowserProfileStorage,
+    MultiSourceCookieStorage,
+)
+from .browser_extraction import (
+    BrowserExtractor,
+    BrowserCookie3Extractor,
+    SubprocessBrowserExtractor,
+    ChromiumCookieExtractor,
+)
+from .exceptions import (
+    ObscuraError,
+    CookieStorageError,
+    BrowserExtractionError,
+    CookieValidationError,
+    ReLoginRequiredError,
+    AuthInvalidatedError,
+)
+
+__version__ = "0.1.0"
+
+__all__ = [
+    # Manager
+    "ObscuraCookieManager",
+    "CookieSource",
+    "CookieValidationResult",
+    # Storage
+    "CookieStorage",
+    "FileCookieStorage",
+    "EnvVarCookieStorage",
+    "BrowserProfileStorage",
+    "MultiSourceCookieStorage",
+    # Browser extraction
+    "BrowserExtractor",
+    "BrowserCookie3Extractor",
+    "SubprocessBrowserExtractor",
+    "ChromiumCookieExtractor",
+    # Exceptions
+    "ObscuraError",
+    "CookieStorageError",
+    "BrowserExtractionError",
+    "CookieValidationError",
+    "ReLoginRequiredError",
+    "AuthInvalidatedError",
+]

@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+obscura_cookie_manager/__init__.py
+obscura_cookie_manager/browser_extraction.py
+obscura_cookie_manager/core.py
+obscura_cookie_manager/exceptions.py
+obscura_cookie_manager/extractors.py
+obscura_cookie_manager/storage.py
+obscura_cookie_manager.egg-info/PKG-INFO
+obscura_cookie_manager.egg-info/SOURCES.txt
+obscura_cookie_manager.egg-info/dependency_links.txt
+obscura_cookie_manager.egg-info/requires.txt
+obscura_cookie_manager.egg-info/top_level.txt
