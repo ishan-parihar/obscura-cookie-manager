@@ -1,14 +1,19 @@
-# Obscura Cookie Manager
+# ObscuraCookieManager
 
-Shared cookie refresh mechanism for CLI tools that need persistent authentication.
+[![PyPI](https://img.shields.io/pypi/v/obscura-cookie-manager)](https://pypi.org/project/obscura-cookie-manager/)
+[![Python](https://img.shields.io/pypi/pyversions/obscura-cookie-manager)](https://pypi.org/project/obscura-cookie-manager/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+A shared cookie refresh mechanism for CLI tools with automatic validation, browser extraction, and multi-source storage.
 
 ## Features
 
-- **Multi-source cookie storage**: File, browser profile, environment variables
-- **Automatic validation**: Periodic cookie validation with configurable interval
-- **Auto re-extraction**: On validation failure, automatically re-extract from browser
-- **Auth invalidation**: On persistent failure, invalidate auth and trigger re-login
-- **Thread-safe**: Async-safe operations with proper locking
+- **Automatic Cookie Validation**: Periodically validates cookies against the platform's API
+- **Browser Cookie Extraction**: Automatically extracts cookies from browsers (Chrome, Firefox, Brave, Arc, etc.)
+- **Multi-Source Storage**: Supports file storage, environment variables, and browser profiles
+- **Auth Invalidation**: Triggers re-login flows when cookies are persistently invalid
+- **Thread-Safe Async Operations**: Safe for concurrent use in async applications
+- **Platform-Specific Extractors**: Pre-configured extractors for Reddit, Twitter/X, Instagram, LinkedIn
 
 ## Installation
 
@@ -16,67 +21,234 @@ Shared cookie refresh mechanism for CLI tools that need persistent authenticatio
 pip install obscura-cookie-manager
 ```
 
-## Usage
+## Quick Start
 
 ```python
+import asyncio
 from obscura_cookie_manager import (
     ObscuraCookieManager,
     FileCookieStorage,
-    BrowserCookie3Extractor,
+    BrowserCookieExtractor,
     CookieSource,
 )
 
-# Define storage
-storage = FileCookieStorage(Path("~/.my-cli/cookies.json"))
+async def main():
+    # Define your cookie validator
+    def validator(cookies: dict[str, str]) -> bool:
+        # Your validation logic here
+        return "required_cookie" in cookies
+    
+    # Create manager
+    storage = FileCookieStorage("/path/to/cookies.json")
+    extractor = BrowserCookieExtractor(
+        domain="example.com",
+        required_cookies=["sessionid", "csrftoken"],
+        preferred_browsers=["chrome", "firefox"]
+    )
+    
+    manager = ObscuraCookieManager(
+        storage=storage,
+        extractor=extractor,
+        validator=validator,
+        required_cookies=["sessionid", "csrftoken"],
+        validation_interval=300,  # 5 minutes
+    )
+    
+    # Get valid cookies
+    result = await manager.get_cookies()
+    
+    if result.valid:
+        print(f"Valid cookies from {result.source}")
+        print(f"Cookies: {result.cookies}")
+    else:
+        print(f"Invalid cookies: {result.error}")
 
-# Define extractor
-extractor = BrowserCookie3Extractor("brave")
+asyncio.run(main())
+```
 
-# Define validator
-def validate_cookies(cookies: dict[str, str]) -> bool:
-    # Make an API call to verify cookies work
-    return True  # or False
+## Platform-Specific Usage
 
-# Create manager
+### Twitter/X
+
+```python
+from obscura_cookie_manager.extractors import TwitterCookieExtractor
+
+extractor = TwitterCookieExtractor()
+cookies = await extractor.extract()
+```
+
+### Instagram
+
+```python
+from obscura_cookie_manager.extractors import InstagramCookieExtractor
+
+extractor = InstagramCookieExtractor()
+cookies = await extractor.extract()
+```
+
+### LinkedIn
+
+```python
+from obscura_cookie_manager.extractors import LinkedInCookieExtractor
+
+extractor = LinkedInCookieExtractor()
+cookies = await extractor.extract()
+```
+
+### Reddit
+
+```python
+from obscura_cookie_manager.extractors import RedditCookieExtractor
+
+extractor = RedditCookieExtractor()
+cookies = await extractor.extract()
+```
+
+## Cookie Sources
+
+ObscuraCookieManager tries cookies in this order:
+
+1. **File Storage**: `FileCookieStorage(path)` - JSON file with cookies
+2. **Environment Variable**: `EnvVarCookieStorage("COOKIES_ENV_VAR")` - JSON string from env var
+3. **Browser Profile**: `BrowserProfileStorage(path)` - Browser profile directory
+4. **Browser Extraction**: Falls back to extracting from installed browsers
+
+## Advanced Usage
+
+### Custom Validator
+
+```python
+async def validate_with_api(cookies: dict[str, str]) -> bool:
+    import httpx
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.example.com/verify",
+            cookies=cookies
+        )
+        return response.status_code == 200
+
 manager = ObscuraCookieManager(
     storage=storage,
     extractor=extractor,
-    validator=validate_cookies,
-    required_cookies=["token_v2", "reddit_session"],
-    validation_interval=300,  # 5 minutes
+    validator=validate_with_api,
+    required_cookies=["sessionid"],
 )
-
-# Get valid cookies (auto-validates, re-extracts if needed)
-result = await manager.get_cookies()
-if result.valid:
-    cookies = result.cookies
-    # Use cookies for API calls
 ```
 
-## Architecture
+### Re-Login Callback
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ObscuraCookieManager                      │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Storage   │  │  Extractor  │  │      Validator      │  │
-│  │             │  │             │  │                     │  │
-│  │ • File      │  │ • browser_  │  │ • API call          │  │
-│  │ • Env var   │  │   cookie3   │  │ • Custom function   │  │
-│  │ • Browser   │  │ • Subprocess│  │                     │  │
-│  │   profile   │  │ • SQLite    │  │                     │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+```python
+def trigger_relogin():
+    print("Auth invalidated! Triggering re-login flow...")
+    # Your re-login logic here
+
+manager.set_invalidation_callback(trigger_relogin)
 ```
 
-## Integration
+### Cache Management
 
-Designed for use with:
-- `reddit-httpx` - Reddit API client
-- `twitter-cli` - Twitter/X CLI
-- `instagram-httpx` - Instagram API client
+```python
+# Check if cache is valid
+if manager.is_cache_valid():
+    cookies = manager.get_cached_cookies()
+    print(f"Cached cookies: {cookies}")
+
+# Force refresh
+result = await manager.get_cookies(force_refresh=True)
+```
+
+## Configuration
+
+### Validation Interval
+
+Control how often cookies are validated:
+
+```python
+manager = ObscuraCookieManager(
+    # ... other params
+    validation_interval=600,  # 10 minutes
+)
+```
+
+### Re-Extraction Limits
+
+Control re-extraction behavior:
+
+```python
+manager = ObscuraCookieManager(
+    # ... other params
+    max_re_extraction_attempts=3,
+    re_extraction_cooldown=60,  # seconds
+)
+```
+
+## API Reference
+
+### ObscuraCookieManager
+
+Main cookie manager class.
+
+**Parameters:**
+- `storage` (CookieStorage): Cookie storage backend
+- `extractor` (BrowserCookieExtractor): Browser cookie extractor
+- `validator` (Callable[[dict[str, str]], bool]): Cookie validation function
+- `required_cookies` (list[str]): Required cookie names
+- `validation_interval` (int): Validation interval in seconds (default: 300)
+- `max_re_extraction_attempts` (int): Max re-extraction attempts (default: 3)
+- `re_extraction_cooldown` (int): Cooldown between attempts in seconds (default: 60)
+
+**Methods:**
+- `async get_cookies(force_refresh=False) -> CookieValidationResult`: Get valid cookies
+- `set_invalidation_callback(callback)`: Set callback for auth invalidation
+- `is_cache_valid() -> bool`: Check if cached cookies are valid
+- `get_cached_cookies() -> dict[str, str] | None`: Get cached cookies
+
+### CookieValidationResult
+
+Result of cookie validation.
+
+**Attributes:**
+- `valid` (bool): Whether cookies are valid
+- `source` (CookieSource): Source of the cookies
+- `cookies` (dict[str, str]): Cookie dictionary
+- `error` (str | None): Error message if invalid
+- `re_extracted` (bool): Whether cookies were re-extracted
+- `metadata` (dict): Additional metadata
+
+### CookieSource
+
+Enum of cookie sources:
+- `FILE`: From file storage
+- `BROWSER_PROFILE`: From browser profile
+- `ENV_VAR`: From environment variable
+- `BROWSER_EXTRACTION`: From browser extraction
+
+## CLI Tools Using ObscuraCookieManager
+
+- [twitter-cli](https://github.com/jackwener/twitter-cli) - Twitter/X CLI
+- [instagram-httpx](https://github.com/jackwener/instagram-httpx) - Instagram MCP server
+- [linkedin-cli](https://github.com/jackwener/linkedin-cli) - LinkedIn MCP server
+- [reddit-httpx](https://github.com/jackwener/reddit-httpx) - Reddit CLI
+
+## Development
+
+```bash
+# Clone repository
+git clone https://github.com/ishan-parihar/obscura-cookie-manager.git
+cd obscura-cookie-manager
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+pytest
+```
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
