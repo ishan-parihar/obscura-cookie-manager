@@ -59,6 +59,17 @@ class InstagramCookieExtractor(BrowserCookieExtractor):
         )
 
 
+class LinkedInCookieExtractor(BrowserCookieExtractor):
+    """Extract LinkedIn cookies (li_at, JSESSIONID)."""
+    
+    def __init__(self, preferred_browsers: Optional[list[str]] = None):
+        super().__init__(
+            domain="linkedin.com",
+            required_cookies=["li_at", "JSESSIONID"],
+            preferred_browsers=preferred_browsers or ["chrome", "brave", "firefox", "edge"]
+        )
+
+
 # Convenience functions
 async def extract_reddit_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract Reddit cookies from browser."""
@@ -75,4 +86,10 @@ async def extract_twitter_cookies(preferred_browsers: Optional[list[str]] = None
 async def extract_instagram_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract Instagram cookies from browser."""
     extractor = InstagramCookieExtractor(preferred_browsers)
+    return await extractor.extract()
+
+
+async def extract_linkedin_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
+    """Extract LinkedIn cookies from browser."""
+    extractor = LinkedInCookieExtractor(preferred_browsers)
     return await extractor.extract()
