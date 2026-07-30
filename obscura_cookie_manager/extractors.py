@@ -65,7 +65,7 @@ class LinkedInCookieExtractor(BrowserCookieExtractor):
     def __init__(self, preferred_browsers: Optional[list[str]] = None):
         super().__init__(
             domain="linkedin.com",
-            required_cookies=["li_at", "JSESSIONID"],
+            required_cookies=["li_at"],
             preferred_browsers=preferred_browsers or ["chrome", "brave", "firefox", "edge"]
         )
 
