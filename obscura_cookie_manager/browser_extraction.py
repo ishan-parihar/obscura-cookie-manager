@@ -51,6 +51,7 @@ class BrowserCookie3Extractor(BrowserExtractor):
     def __init__(self, browser_name: str, cookie_file: Optional[Path] = None):
         self.browser_name = browser_name
         self.cookie_file = cookie_file
+        self.name = browser_name  # For priority sorting
         self._browser_fn = None
     
     def _get_browser_fn(self):
@@ -118,12 +119,13 @@ class SubprocessBrowserExtractor(BrowserExtractor):
     def __init__(self, browser_name: str, cookie_file: Optional[Path] = None):
         self.browser_name = browser_name
         self.cookie_file = cookie_file
+        self.name = browser_name  # For priority sorting
     
     def is_available(self) -> bool:
         return True  # Always available if python is available
     
     async def extract(self, domain: str, required_cookies: list[str]) -> Optional[dict[str, str]]:
-        script = self._build_extraction_script(domain, required_cookies)
+        script = self._build_extraction_script(domain, required_cookies, self.browser_name)
         
         try:
             # Try current environment first
@@ -138,7 +140,7 @@ class SubprocessBrowserExtractor(BrowserExtractor):
             logger.debug(f"Subprocess extraction failed: {e}")
             return None
     
-    def _build_extraction_script(self, domain: str, required_cookies: list[str]) -> str:
+    def _build_extraction_script(self, domain: str, required_cookies: list[str], browser_name: str) -> str:
         required_json = json.dumps(required_cookies)
         return f'''
 import json, os, sys, glob
@@ -210,20 +212,20 @@ browser_fns = {{
     "brave": browser_cookie3.brave,
 }}
 
-fn = browser_fns.get("{self.browser_name}")
+fn = browser_fns.get("{browser_name}")
 if not fn:
     print(json.dumps({{"error": "Unknown browser"}}))
     sys.exit(1)
 
-if "{self.browser_name}" in CHROMIUM_BASE_DIRS:
-    cookie_files = iter_cookie_files("{self.browser_name}")
+if "{browser_name}" in CHROMIUM_BASE_DIRS:
+    cookie_files = iter_cookie_files("{browser_name}")
     if not cookie_files:
         try:
             jar = fn()
         except Exception as exc:
             print(json.dumps({{"error": str(exc)}}))
             sys.exit(1)
-        r = extract_from_jar(jar, "{self.browser_name}")
+        r = extract_from_jar(jar, "{browser_name}")
         if r:
             print(json.dumps(r))
             sys.exit(0)
@@ -233,7 +235,7 @@ if "{self.browser_name}" in CHROMIUM_BASE_DIRS:
             jar = fn(cookie_file=cf)
         except Exception as exc:
             continue
-        r = extract_from_jar(jar, "{self.browser_name}", pname)
+        r = extract_from_jar(jar, "{browser_name}", pname)
         if r:
             print(json.dumps(r))
             sys.exit(0)
@@ -243,7 +245,7 @@ else:
     except Exception as exc:
         print(json.dumps({{"error": str(exc)}}))
         sys.exit(1)
-    r = extract_from_jar(jar, "{self.browser_name}")
+    r = extract_from_jar(jar, "{browser_name}")
     if r:
         print(json.dumps(r))
         sys.exit(0)
@@ -267,6 +269,7 @@ sys.exit(1)
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
             
             if proc.returncode != 0:
+                logger.debug(f"Subprocess extraction ({label}) failed: {stderr.decode()}")
                 return None
             
             output = stdout.decode().strip()
@@ -275,6 +278,7 @@ sys.exit(1)
             
             data = json.loads(output)
             if "error" in data:
+                logger.debug(f"Subprocess extraction ({label}) error: {data.get('error')}")
                 return None
             
             return data
@@ -289,6 +293,7 @@ class ChromiumCookieExtractor(BrowserExtractor):
     def __init__(self, browser_name: str, cookie_file: Path):
         self.browser_name = browser_name
         self.cookie_file = cookie_file
+        self.name = browser_name  # For priority sorting
     
     def is_available(self) -> bool:
         return self.cookie_file.exists()
@@ -392,8 +397,9 @@ class ChromiumCookieExtractor(BrowserExtractor):
 class FirefoxCookieExtractor(BrowserExtractor):
     """Extract cookies from Firefox/Zen browsers using direct SQLite access."""
     
-    def __init__(self, cookie_file: Path):
+    def __init__(self, cookie_file: Path, browser_name: str = "firefox"):
         self.cookie_file = cookie_file
+        self.name = browser_name  # For priority sorting
     
     def is_available(self) -> bool:
         return self.cookie_file.exists()
@@ -492,7 +498,7 @@ class BrowserExtractorFactory:
             for profile_dir in firefox_base.iterdir():
                 cookies_file = profile_dir / "cookies.sqlite"
                 if cookies_file.exists():
-                    extractors.append(FirefoxCookieExtractor(cookies_file))
+                    extractors.append(FirefoxCookieExtractor(cookies_file, "firefox"))
                     extractors.append(BrowserCookie3Extractor("firefox", cookies_file))
                     extractors.append(SubprocessBrowserExtractor("firefox", cookies_file))
                     break
@@ -508,7 +514,7 @@ class BrowserExtractorFactory:
                 if profile_dir.is_dir():
                     cookies_file = profile_dir / "cookies.sqlite"
                     if cookies_file.exists():
-                        extractors.append(FirefoxCookieExtractor(cookies_file))
+                        extractors.append(FirefoxCookieExtractor(cookies_file, "zen"))
                         extractors.append(BrowserCookie3Extractor("zen", cookies_file))
                         extractors.append(SubprocessBrowserExtractor("zen", cookies_file))
                         break
@@ -527,9 +533,11 @@ class BrowserExtractorFactory:
         # Sort by preference
         if preferred_browsers:
             def priority(e):
-                for i, b in enumerate(preferred_browsers):
-                    if b in e.browser_name if hasattr(e, 'browser_name') else False:
-                        return i
+                browser_name = getattr(e, 'browser_name', None)
+                if browser_name:
+                    for i, b in enumerate(preferred_browsers):
+                        if b in browser_name:
+                            return i
                 return 999
             extractors.sort(key=priority)
         
