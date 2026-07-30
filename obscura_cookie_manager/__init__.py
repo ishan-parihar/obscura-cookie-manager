@@ -24,7 +24,13 @@ from .browser_extraction import (
     SubprocessBrowserExtractor,
     ChromiumCookieExtractor,
 )
-from .extractors import BrowserCookieExtractor
+from .extractors import (
+    BrowserCookieExtractor,
+    RedditCookieExtractor,
+    TwitterCookieExtractor,
+    InstagramCookieExtractor,
+    LinkedInCookieExtractor,
+)
 from .exceptions import (
     ObscuraError,
     CookieStorageError,
@@ -53,6 +59,11 @@ __all__ = [
     "BrowserCookieExtractor",
     "SubprocessBrowserExtractor",
     "ChromiumCookieExtractor",
+    # Platform-specific extractors
+    "RedditCookieExtractor",
+    "TwitterCookieExtractor",
+    "InstagramCookieExtractor",
+    "LinkedInCookieExtractor",
     # Exceptions
     "ObscuraError",
     "CookieStorageError",
