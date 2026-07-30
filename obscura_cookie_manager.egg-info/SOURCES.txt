@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 obscura_cookie_manager/__init__.py

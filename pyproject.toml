@@ -1,13 +1,19 @@
 [project]
 name = "obscura-cookie-manager"
 version = "0.1.0"
-description = "Shared cookie refresh mechanism for CLI tools"
+description = "Shared cookie refresh mechanism for CLI tools with automatic validation, browser extraction, and multi-source storage"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
     "browser-cookie3>=0.10.0",
     "cryptography>=42.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ishan-parihar/obscura-cookie-manager"
+Repository = "https://github.com/ishan-parihar/obscura-cookie-manager"
+Issues = "https://github.com/ishan-parihar/obscura-cookie-manager/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -17,7 +23,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.ruff]
