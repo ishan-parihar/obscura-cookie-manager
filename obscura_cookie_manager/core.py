@@ -167,7 +167,7 @@ class ObscuraCookieManager:
     async def _extract_from_browser(self) -> Optional[dict[str, str]]:
         """Extract cookies from browser."""
         try:
-            cookies = await self.extractor.extract()
+            cookies = await self.extractor.extract(self.extractor.domain, self.required_cookies)
             if cookies:
                 logger.info(f"Extracted {len(cookies)} cookies from browser")
             return cookies

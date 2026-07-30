@@ -17,11 +17,11 @@ class BrowserCookieExtractor:
         self.required_cookies = required_cookies
         self.preferred_browsers = preferred_browsers or []
     
-    async def extract(self) -> Optional[dict[str, str]]:
+    async def extract(self, domain: str, required_cookies: list[str]) -> Optional[dict[str, str]]:
         """Extract cookies from any available browser."""
         return await BrowserExtractorFactory.extract_from_any(
-            self.domain,
-            self.required_cookies,
+            domain,
+            required_cookies,
             self.preferred_browsers
         )
 
@@ -74,22 +74,22 @@ class LinkedInCookieExtractor(BrowserCookieExtractor):
 async def extract_reddit_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract Reddit cookies from browser."""
     extractor = RedditCookieExtractor(preferred_browsers)
-    return await extractor.extract()
+    return await extractor.extract(extractor.domain, extractor.required_cookies)
 
 
 async def extract_twitter_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract Twitter/X cookies from browser."""
     extractor = TwitterCookieExtractor(preferred_browsers)
-    return await extractor.extract()
+    return await extractor.extract(extractor.domain, extractor.required_cookies)
 
 
 async def extract_instagram_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract Instagram cookies from browser."""
     extractor = InstagramCookieExtractor(preferred_browsers)
-    return await extractor.extract()
+    return await extractor.extract(extractor.domain, extractor.required_cookies)
 
 
 async def extract_linkedin_cookies(preferred_browsers: Optional[list[str]] = None) -> Optional[dict[str, str]]:
     """Extract LinkedIn cookies from browser."""
     extractor = LinkedInCookieExtractor(preferred_browsers)
-    return await extractor.extract()
+    return await extractor.extract(extractor.domain, extractor.required_cookies)

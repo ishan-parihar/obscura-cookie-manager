@@ -86,9 +86,9 @@ class BrowserCookie3Extractor(BrowserExtractor):
             # Run in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             if self.cookie_file:
-                jar = await loop.run_in_executor(None, lambda: fn(cookie_file=str(self.cookie_file)))
+                jar = await loop.run_in_executor(None, lambda: fn(cookie_file=str(self.cookie_file), domain_name=domain))
             else:
-                jar = await loop.run_in_executor(None, fn)
+                jar = await loop.run_in_executor(None, lambda: fn(domain_name=domain))
             
             return self._extract_from_jar(jar, domain, required_cookies)
         except Exception as e:
@@ -533,7 +533,7 @@ class BrowserExtractorFactory:
         # Sort by preference
         if preferred_browsers:
             def priority(e):
-                browser_name = getattr(e, 'name', None) or getattr(e, 'browser_name', None)
+                browser_name = getattr(e, 'name', None)
                 if browser_name:
                     for i, b in enumerate(preferred_browsers):
                         if b in browser_name:
@@ -545,7 +545,7 @@ class BrowserExtractorFactory:
             if not extractor.is_available():
                 continue
             try:
-                result = await extractor.extract()
+                result = await extractor.extract(domain, required_cookies)
                 if result:
                     logger.info(f"Extracted cookies from {extractor.__class__.__name__}")
                     return result
