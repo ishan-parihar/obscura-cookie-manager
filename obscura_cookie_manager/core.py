@@ -55,6 +55,7 @@ class ObscuraCookieManager:
         extractor: BrowserCookieExtractor,
         validator: Callable[[dict[str, str]], bool],
         required_cookies: list[str],
+        domain: str,
         validation_interval: int = 300,  # 5 minutes default
         max_re_extraction_attempts: int = 3,
         re_extraction_cooldown: int = 60,  # seconds
@@ -63,6 +64,7 @@ class ObscuraCookieManager:
         self.extractor = extractor
         self.validator = validator
         self.required_cookies = required_cookies
+        self.domain = domain
         self.validation_interval = validation_interval
         self.max_re_extraction_attempts = max_re_extraction_attempts
         self.re_extraction_cooldown = re_extraction_cooldown
@@ -155,7 +157,6 @@ class ObscuraCookieManager:
         
         try:
             # Run validator in thread pool if it's sync
-            import asyncio
             if asyncio.iscoroutinefunction(self.validator):
                 return await self.validator(cookies)
             else:
@@ -168,7 +169,7 @@ class ObscuraCookieManager:
     async def _extract_from_browser(self) -> Optional[dict[str, str]]:
         """Extract cookies from browser."""
         try:
-            cookies = await self.extractor.extract()
+            cookies = await self.extractor.extract(self.domain, self.required_cookies)
             if cookies:
                 logger.info(f"Extracted {len(cookies)} cookies from browser")
             return cookies
