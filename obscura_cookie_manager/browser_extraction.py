@@ -533,7 +533,7 @@ class BrowserExtractorFactory:
         # Sort by preference
         if preferred_browsers:
             def priority(e):
-                browser_name = getattr(e, 'browser_name', None)
+                browser_name = getattr(e, 'name', None) or getattr(e, 'browser_name', None)
                 if browser_name:
                     for i, b in enumerate(preferred_browsers):
                         if b in browser_name:
@@ -545,7 +545,7 @@ class BrowserExtractorFactory:
             if not extractor.is_available():
                 continue
             try:
-                result = await extractor.extract(domain, required_cookies)
+                result = await extractor.extract()
                 if result:
                     logger.info(f"Extracted cookies from {extractor.__class__.__name__}")
                     return result
